@@ -11,11 +11,18 @@
 #include <JuceHeader.h>
 #include "FilterComponent.h"
 #include "JuceItInterfaceDefines.h"
+#include "JuceItParameters.h"
+
 
 //==============================================================================
-FilterComponent::FilterComponent() :
-xPosition(266.0f), yPosition(58.0f)
+FilterComponent::FilterComponent(JuceItAudioProcessor* inProcessor) :
+jProcessor(inProcessor)
 {
+    auto& params = jProcessor->parameters;
+    frequency = params.getRawParameterValue(JuceItParameterID[jParameter_Frequency]);
+    resonance = params.getRawParameterValue(JuceItParameterID[jParameter_Resonance]);
+    
+    startTimer(10);
     
 }
 
@@ -25,47 +32,57 @@ FilterComponent::~FilterComponent()
 
 void FilterComponent::paint (juce::Graphics& g)
 {
-    const float filterHeight = 160.0f;
-    //Paint Gradient Background
-    const float ratio = juce::jmap(yPosition, 0.f, 354.0f, 1.f,-2.7f);
-    const float ratio2 = juce::jmap(yPosition, 0.f, 354.0f, 0.f,1.5f);
-    juce::ColourGradient borderGradient(JuceItFilterBackground_Colour2,0,0,JuceItFilterBackground_Colour1,0, getHeight()*.75, false);
-    g.setGradientFill(borderGradient);
-    g.fillAll();
+    //Paint Component Background
+    paintComponentBackground(g);
+    const float xPosition = juce::jmap((float)*frequency, FILTER_COORDINATES_OFFSET, MAX_X_COORDINATE_POSITION-10);
+    const float yPosition = juce::jmap((float)*resonance, MAX_Y_COORDINATE_POSITION, FILTER_COORDINATES_OFFSET);
     
     
-    //Path Filter Variables
+    //Ratio used to control characteristics filter movement
+    const float ratio =  juce::jmap(yPosition, 0.f, (float)JUCEIT_FILTER_BOUNDS, 0.f, 0.75f);
+    
+    //Path variables
     juce::Path filterPath;
     juce::PathStrokeType stroke (6.0f, juce::PathStrokeType::curved, juce::PathStrokeType::EndCapStyle::rounded);
-    juce::Point<float> startingPoint(0.f, getHeight());
-    juce::Point<float> startingOutlinePoint(-6.f, filterHeight);
-    juce::Point<float> midPoint0(xPosition-80.0,  filterHeight);
-    juce::Point<float> midPoint1(xPosition-40.0*ratio2,  filterHeight);
-    juce::Point<float> midPoint2(xPosition+(60*ratio2), filterHeight-(ratio*100));
-    juce::Point<float> resonancePoint(xPosition, yPosition-20);
-    juce::Point<float> endingOutlinePoint(xPosition+80.0f, getHeight()+5);
+    const float midPointXPosition = xPosition+80*ratio < MAX_X_COORDINATE_POSITION ? xPosition+80*ratio : MAX_X_COORDINATE_POSITION;
+    const float endPointXPosition = xPosition+60.0f < MAX_X_COORDINATE_POSITION ? xPosition+60.0f : MAX_X_COORDINATE_POSITION;
+    const float midPoint2XPosition = xPosition+20*ratio < MAX_X_COORDINATE_POSITION ?  xPosition+20*ratio : MAX_X_COORDINATE_POSITION;
     
-    //Fill Filter background
-    juce::ColourGradient filterFillGradient(JuceItFilterFillBackground_Colour1,0,filterHeight,JuceItFilterFillBackground_Colour2,0, getHeight(), false);
+    //Points for Filter
+    juce::Point<float> startingPoint(0.f, getHeight());
+    juce::Point<float> startingOutlinePoint(-6.f, FILTER_HEIGHT);
+    juce::Point<float> startingCurvePoint(xPosition-80.f, FILTER_HEIGHT);
+    juce::Point<float> midPoint1(xPosition, FILTER_HEIGHT);
+    juce::Point<float> midPoint2(midPoint2XPosition, yPosition+30*ratio);
+    juce::Point<float> midPoint3(midPointXPosition,  (yPosition+getHeight())/2.0);
+    juce::Point<float> resonancePoint(xPosition, yPosition);
+    juce::Point<float> endingOutlinePoint(endPointXPosition, getHeight()+1);
+    
+    //Filter Path background
+    juce::ColourGradient filterFillGradient(JuceItFilterFillBackground_Colour1,0,FILTER_HEIGHT,JuceItFilterFillBackground_Colour2,0, getHeight(), false);
     filterPath.startNewSubPath (startingPoint);
-    filterPath.lineTo(startingOutlinePoint);;
-    filterPath.cubicTo(midPoint0, midPoint1, resonancePoint);
-    filterPath.quadraticTo(midPoint2, endingOutlinePoint);
+    filterPath.lineTo(startingOutlinePoint);
+    filterPath.lineTo(startingCurvePoint);
+    filterPath.cubicTo(midPoint1, resonancePoint, midPoint2);
+    filterPath.quadraticTo(midPoint3, endingOutlinePoint);
     filterPath.closeSubPath();
     
+    //Fill Filter Path Background
     g.setGradientFill(filterFillGradient);
     g.fillPath(filterPath);
     
-    //Draw Outline
+    //Draw Outline for Filter
     filterPath.clear();
     filterPath.startNewSubPath(startingOutlinePoint);
-    filterPath.cubicTo(midPoint0, midPoint1, resonancePoint);
-    filterPath.quadraticTo(midPoint2, endingOutlinePoint);
+    filterPath.lineTo(startingCurvePoint);
+    filterPath.cubicTo(midPoint1, resonancePoint, midPoint2);
+    filterPath.quadraticTo(midPoint3, endingOutlinePoint);
     
+    //Fill Outline for Filter
     g.setColour(juce::Colours::white);
-    g.strokePath(filterPath.createPathWithRoundedCorners(2000.0f),stroke);
+    g.strokePath(filterPath,stroke);
     
-    
+
 }
 
 void FilterComponent::resized()
@@ -73,53 +90,75 @@ void FilterComponent::resized()
     
 }
 
-void FilterComponent::mouseDown(const juce::MouseEvent &event)
+void FilterComponent::mouseDown(const juce::MouseEvent& event)
 {
-   
-    xPosition = event.getMouseDownX();
-    yPosition = event.getMouseDownY();
-    if(xPosition>getWidth())
+    setMousePosition(event);
+}
+
+void FilterComponent::mouseDrag(const juce::MouseEvent& event)
+{
+    setMousePosition(event);
+}
+
+/**
+ After a desired mouse event, we get the mouse coorindates and put them within the bounds
+ of the possible area the filter can move in. We then map the the coordinates and update the
+ frequency and 
+ */
+void FilterComponent::setMousePosition(const juce::MouseEvent& event)
+{
+    float xPosition = event.getPosition().getX();
+    float yPosition = event.getPosition().getY();
+    
+    if(xPosition>MAX_X_COORDINATE_POSITION)
     {
-        xPosition = getWidth();
+        xPosition = MAX_X_COORDINATE_POSITION;
     }
-    else if(xPosition<0)
+    else if(xPosition<FILTER_COORDINATES_OFFSET)
     {
-        xPosition=0;
+        xPosition=FILTER_COORDINATES_OFFSET;
     }
     
-    if(yPosition>216)
+    if(yPosition>MAX_Y_COORDINATE_POSITION)
     {
-        yPosition = 216;
+        yPosition = MAX_Y_COORDINATE_POSITION;
     }
-    else if(yPosition<0)
+    else if(yPosition<FILTER_COORDINATES_OFFSET)
     {
-        yPosition=0;
+        yPosition=FILTER_COORDINATES_OFFSET;
     }
+    
+    *frequency = juce::jmap(xPosition,
+                            FILTER_COORDINATES_OFFSET,
+                            MAX_X_COORDINATE_POSITION,
+                            0.f,
+                            1.f);
+    
+    *resonance = juce::jmap(yPosition,
+                            MAX_Y_COORDINATE_POSITION,
+                            FILTER_COORDINATES_OFFSET,
+                            0.f,
+                            1.f);
+    
+}
+
+/**
+ Originally I added a repaint whenever the mouse position was moved but ended using
+ timerCallback to account for other state changes from events like automation. I'm curious in trying
+ in adding a AudioProcessor::Listener to catch any value changes to the processor and calling repaint using one its methods.
+ */
+void FilterComponent::timerCallback()
+{
     repaint();
 }
 
-void FilterComponent::mouseDrag(const juce::MouseEvent &event)
+void FilterComponent::paintComponentBackground(juce::Graphics& g)
 {
-    xPosition = event.getPosition().getX();
-    yPosition = event.getPosition().getY();
-    std::cout<< yPosition << std::endl;
-    if(xPosition>getWidth())
-    {
-        xPosition = getWidth();
-    }
-    else if(xPosition<0)
-    {
-        xPosition=0;
-    }
-    
-    if(yPosition>216)
-    {
-        yPosition = 216;
-    }
-    else if(yPosition<2)
-    {
-        yPosition=2;
-    }
-    
-    repaint();
+    //Paint Gradient Background
+    juce::ColourGradient backgroundGradient(JuceItFilterBackground_Colour2,0,0,JuceItFilterBackground_Colour1,0, getHeight()*.75, false);
+    g.setGradientFill(backgroundGradient);
+    g.fillAll();
 }
+
+
+

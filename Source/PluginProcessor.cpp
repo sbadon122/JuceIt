@@ -8,6 +8,7 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "JuceItParameters.h"
 
 //==============================================================================
 JuceItAudioProcessor::JuceItAudioProcessor()
@@ -19,8 +20,9 @@ JuceItAudioProcessor::JuceItAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
 #endif
+parameters(*this, nullptr, juce::Identifier("JuceIt"), createParameterLayout())
 {
 }
 
@@ -170,15 +172,37 @@ juce::AudioProcessorEditor* JuceItAudioProcessor::createEditor()
 //==============================================================================
 void JuceItAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
+    auto state = parameters.copyState();
+    std::unique_ptr<juce::XmlElement> xml (state.createXml());
+    copyXmlToBinary (*xml, destData);
 }
 
 void JuceItAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
+    
+    std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
+ 
+    if (xmlState.get() != nullptr)
+            if (xmlState->hasTagName (parameters.state.getType()))
+                parameters.replaceState (juce::ValueTree::fromXml (*xmlState));
+}
+
+/**
+ Set up parameters for Audio Plugin
+ */
+juce::AudioProcessorValueTreeState::ParameterLayout JuceItAudioProcessor::createParameterLayout()
+{
+    juce::AudioProcessorValueTreeState::ParameterLayout params;
+    for(int i = 0; i< jParameter_TotalParamNums;i++)
+    {
+        params.add(std::make_unique<juce::AudioParameterFloat>(JuceItParameterID[i],
+                                          JuceItParameterLabel[i],
+                                          juce::NormalisableRange<float> (JuceItParameterMinValue[i], JuceItParameterMaxValue[i]),
+                                          JuceItParameterDefaultValue[i]
+                                          ));
+    }
+    
+    return params;
 }
 
 //==============================================================================

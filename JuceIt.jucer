@@ -13,6 +13,8 @@
       <GROUP id="{D44B8C41-70CA-3C62-5601-D5F6937D1CB4}" name="Utilities">
         <FILE id="Bq66hs" name="JuceItInterfaceDefines.h" compile="0" resource="0"
               file="Source/JuceItInterfaceDefines.h"/>
+        <FILE id="lPVxdS" name="JuceItParameters.h" compile="0" resource="0"
+              file="Source/JuceItParameters.h"/>
       </GROUP>
       <FILE id="QplvhB" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>

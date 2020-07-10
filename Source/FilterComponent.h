@@ -11,24 +11,27 @@
 #pragma once
 
 #include <JuceHeader.h>
-
+#include "PluginProcessor.h"
 //==============================================================================
 /*
 */
-class FilterComponent  : public juce::Component
+class FilterComponent  : public juce::Component, public juce::Timer
 {
 public:
-    FilterComponent();
+    FilterComponent(JuceItAudioProcessor* inProcessor);
     ~FilterComponent() override;
 
     void paint (juce::Graphics&) override;
     void resized() override;
-    void mouseDown  (const juce::MouseEvent &event)  override;
-    void mouseDrag  (const juce::MouseEvent &event)  override;
-    
+    void mouseDown  (const juce::MouseEvent& event)  override;
+    void mouseDrag  (const juce::MouseEvent& event)  override;
+    void timerCallback() override;
 
 private:
-    void fillFilterBackground(juce::Graphics&, juce::Point<float> );
-    float xPosition, yPosition;
+    void setMousePosition(const juce::MouseEvent& event);
+    void paintComponentBackground(juce::Graphics& g);
+    std::atomic<float>* frequency;
+    std::atomic<float>* resonance;
+    JuceItAudioProcessor* jProcessor;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FilterComponent)
 };
