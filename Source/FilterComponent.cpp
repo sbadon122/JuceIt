@@ -19,26 +19,35 @@ FilterComponent::FilterComponent(JuceItAudioProcessor* inProcessor) :
 jProcessor(inProcessor)
 {
     auto& params = jProcessor->parameters;
+    
+    //Thread safe way of reading values
     frequency = params.getRawParameterValue(JuceItParameterID[jParameter_Frequency]);
     resonance = params.getRawParameterValue(JuceItParameterID[jParameter_Resonance]);
     
-    startTimer(10);
-    
+    //Setting this component to listen for parameter changes for repainting purposes
+    params.addParameterListener(JuceItParameterID[jParameter_Frequency], this);
+    params.addParameterListener(JuceItParameterID[jParameter_Resonance], this);
 }
 
 FilterComponent::~FilterComponent()
 {
+    //Don't forget to remove those listeners!
+    auto& params = jProcessor->parameters;
+    params.removeParameterListener(JuceItParameterID[jParameter_Frequency], this);
+    params.removeParameterListener(JuceItParameterID[jParameter_Resonance], this);
 }
+
 
 void FilterComponent::paint (juce::Graphics& g)
 {
     //Paint Component Background
     paintComponentBackground(g);
+    
+    //Map parameter values to coordinates in the filter space
     const float xPosition = juce::jmap((float)*frequency, FILTER_COORDINATES_OFFSET, MAX_X_COORDINATE_POSITION-10);
     const float yPosition = juce::jmap((float)*resonance, MAX_Y_COORDINATE_POSITION, FILTER_COORDINATES_OFFSET);
     
-    
-    //Ratio used to control characteristics filter movement
+    //Variable used to control characteristics of filter movement
     const float ratio =  juce::jmap(yPosition, 0.f, (float)JUCEIT_FILTER_BOUNDS, 0.f, 0.75f);
     
     //Path variables
@@ -82,7 +91,6 @@ void FilterComponent::paint (juce::Graphics& g)
     g.setColour(juce::Colours::white);
     g.strokePath(filterPath,stroke);
     
-
 }
 
 void FilterComponent::resized()
@@ -98,60 +106,87 @@ void FilterComponent::mouseDown(const juce::MouseEvent& event)
 void FilterComponent::mouseDrag(const juce::MouseEvent& event)
 {
     setMousePosition(event);
+   
 }
 
 /**
  After a desired mouse event, we get the mouse coorindates and put them within the bounds
- of the possible area the filter can move in. We then map the the coordinates and update the
- frequency and 
+ of the possible area the filter can move in. We then jmap the coordinates and update the
+ frequency and response parameters.
  */
 void FilterComponent::setMousePosition(const juce::MouseEvent& event)
 {
-    float xPosition = event.getPosition().getX();
-    float yPosition = event.getPosition().getY();
-    
-    if(xPosition>MAX_X_COORDINATE_POSITION)
-    {
-        xPosition = MAX_X_COORDINATE_POSITION;
+    //Prevent duplicate events. Concept was copied from slider event listeners
+    if(lastMouseTime != event.eventTime){
+        lastMouseTime = event.eventTime;
+        
+        //Get mouse position
+        float xPosition = event.getPosition().getX();
+        float yPosition = event.getPosition().getY();
+        
+        //Set the xPosition within the possible desired bounds of the component
+        if(xPosition>MAX_X_COORDINATE_POSITION)
+        {
+            xPosition = MAX_X_COORDINATE_POSITION;
+        }
+        else if(xPosition<FILTER_COORDINATES_OFFSET)
+        {
+            xPosition=FILTER_COORDINATES_OFFSET;
+        }
+        
+        //Set the yPosition within the possible desired bounds of the component
+        if(yPosition>MAX_Y_COORDINATE_POSITION)
+        {
+            yPosition = MAX_Y_COORDINATE_POSITION;
+        }
+        else if(yPosition<FILTER_COORDINATES_OFFSET)
+        {
+            yPosition=FILTER_COORDINATES_OFFSET;
+        }
+        
+        //Map the coordinates to values within the range of frequency
+        float frequencyValueMap = juce::jmap(xPosition,
+                                            FILTER_COORDINATES_OFFSET,
+                                            MAX_X_COORDINATE_POSITION,
+                                            JuceItParameterMinValue[jParameter_Frequency],
+                                            JuceItParameterMaxValue[jParameter_Frequency]);
+        
+        //Map the coordinates to values within the range of Resonace
+        float resonanceValueMap = juce::jmap(yPosition,
+                                            MAX_Y_COORDINATE_POSITION,
+                                            FILTER_COORDINATES_OFFSET,
+                                            JuceItParameterMinValue[jParameter_Resonance],
+                                            JuceItParameterMaxValue[jParameter_Resonance]);
+        
+        //Update parameters
+        auto& params = jProcessor->parameters;
+        juce::Value freq = params.getParameterAsValue(JuceItParameterID[jParameter_Frequency]);
+        juce::Value res = params.getParameterAsValue(JuceItParameterID[jParameter_Resonance]);
+        freq.setValue(frequencyValueMap);
+        res.setValue(resonanceValueMap);
+        
     }
-    else if(xPosition<FILTER_COORDINATES_OFFSET)
-    {
-        xPosition=FILTER_COORDINATES_OFFSET;
-    }
-    
-    if(yPosition>MAX_Y_COORDINATE_POSITION)
-    {
-        yPosition = MAX_Y_COORDINATE_POSITION;
-    }
-    else if(yPosition<FILTER_COORDINATES_OFFSET)
-    {
-        yPosition=FILTER_COORDINATES_OFFSET;
-    }
-    
-    *frequency = juce::jmap(xPosition,
-                            FILTER_COORDINATES_OFFSET,
-                            MAX_X_COORDINATE_POSITION,
-                            0.f,
-                            1.f);
-    
-    *resonance = juce::jmap(yPosition,
-                            MAX_Y_COORDINATE_POSITION,
-                            FILTER_COORDINATES_OFFSET,
-                            0.f,
-                            1.f);
-    
+
 }
 
 /**
- Originally I added a repaint whenever the mouse position was moved but ended using
- timerCallback to account for other state changes from events like automation. I'm curious in trying
- in adding a AudioProcessor::Listener to catch any value changes to the processor and calling repaint using one its methods.
+ Repaint filter if Frequency or Resonance parameters change. Since there's a lot of callbacks that can occur,
+ I use the MessageManager to call repaint safely on the message thread.
  */
-void FilterComponent::timerCallback()
+void FilterComponent::parameterChanged (const String &parameterID, float newValue)
 {
-    repaint();
+    if(parameterID == JuceItParameterID[jParameter_Frequency] ||
+       parameterID == JuceItParameterID[jParameter_Resonance])
+    {
+        MessageManager::callAsync([this]{
+            repaint();
+        });
+    }
 }
 
+/**
+ Paints blue graident background behind filter component
+ */
 void FilterComponent::paintComponentBackground(juce::Graphics& g)
 {
     //Paint Gradient Background

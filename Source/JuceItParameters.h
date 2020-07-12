@@ -12,7 +12,7 @@
 using namespace juce;
 
 /**
- This header file serves as a means of tracking all parameters and its fields in the audio component.
+    This header file serves as a means of tracking all parameters and its fields in the audio component.
  */
 
 enum JuceItParameters {
@@ -23,8 +23,8 @@ enum JuceItParameters {
 
 static String JuceItParameterID [jParameter_TotalParamNums] =
 {
-    "Frequency",
-    "Resonance",
+    "frequency",
+    "resonance",
 };
 
 static String JuceItParameterLabel [jParameter_TotalParamNums] =

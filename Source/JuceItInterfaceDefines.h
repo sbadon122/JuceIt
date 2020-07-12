@@ -26,7 +26,7 @@
 #define FILTER_HEIGHT 160.0f
 #define MAX_X_COORDINATE_POSITION JUCEIT_FILTER_BOUNDS-FILTER_COORDINATES_OFFSET
 
-
+//Color definitions
 const juce::Colour JuceItBorder_Colour1 =               juce::Colours::white;
 const juce::Colour JuceItBorder_Colour2 =               juce::Colours::black;
 const juce::Colour JuceItRectBorder_Colour1 =           juce::Colour(173, 173, 173);

@@ -179,12 +179,12 @@ void JuceItAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 
 void JuceItAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    
     std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
  
-    if (xmlState.get() != nullptr)
-            if (xmlState->hasTagName (parameters.state.getType()))
-                parameters.replaceState (juce::ValueTree::fromXml (*xmlState));
+    if (xmlState.get() != nullptr && xmlState->hasTagName (parameters.state.getType()))
+    {
+        parameters.replaceState (juce::ValueTree::fromXml (*xmlState));
+    }
 }
 
 /**

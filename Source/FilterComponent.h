@@ -15,7 +15,7 @@
 //==============================================================================
 /*
 */
-class FilterComponent  : public juce::Component, public juce::Timer
+class FilterComponent  : public juce::Component, public juce::AudioProcessorValueTreeState::Listener
 {
 public:
     FilterComponent(JuceItAudioProcessor* inProcessor);
@@ -25,13 +25,15 @@ public:
     void resized() override;
     void mouseDown  (const juce::MouseEvent& event)  override;
     void mouseDrag  (const juce::MouseEvent& event)  override;
-    void timerCallback() override;
+    void parameterChanged (const juce::String &parameterID, float newValue) override;
 
 private:
     void setMousePosition(const juce::MouseEvent& event);
     void paintComponentBackground(juce::Graphics& g);
+    
     std::atomic<float>* frequency;
     std::atomic<float>* resonance;
+    juce::Time lastMouseTime;
     JuceItAudioProcessor* jProcessor;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FilterComponent)
 };
