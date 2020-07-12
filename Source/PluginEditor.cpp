@@ -32,7 +32,7 @@ void JuceItAudioProcessorEditor::paint (juce::Graphics& g)
     g.fillAll();
     juce::Rectangle<int> rectBorder (0,0,getWidth(),getHeight());
     g.setColour(JuceItRectBorder_Colour1);
-    g.drawRect (rectBorder, 2);
+    g.drawRect (rectBorder, JUCEIT_FILTER_BORDER);
 }
 
 void JuceItAudioProcessorEditor::resized()

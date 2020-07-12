@@ -44,15 +44,15 @@ void FilterComponent::paint (juce::Graphics& g)
     paintComponentBackground(g);
     
     //Map parameter values to coordinates in the filter space
-    const float xPosition = juce::jmap((float)*frequency, FILTER_COORDINATES_OFFSET, MAX_X_COORDINATE_POSITION-10);
-    const float yPosition = juce::jmap((float)*resonance, MAX_Y_COORDINATE_POSITION, FILTER_COORDINATES_OFFSET);
+    const float xPosition = juce::jmap((float)*frequency, MIN_X_COORDINATE_POSITION, MAX_X_COORDINATE_POSITION);
+    const float yPosition = juce::jmap((float)*resonance, MAX_Y_COORDINATE_POSITION, MIN_Y_COORDINATE_POSITION);
     
     //Variable used to control characteristics of filter movement
     const float ratio =  juce::jmap(yPosition, 0.f, (float)JUCEIT_FILTER_BOUNDS, 0.f, 0.75f);
     
     //Path variables
     juce::Path filterPath;
-    juce::PathStrokeType stroke (6.0f, juce::PathStrokeType::curved, juce::PathStrokeType::EndCapStyle::rounded);
+    juce::PathStrokeType stroke (6.0f, juce::PathStrokeType::beveled, juce::PathStrokeType::EndCapStyle::rounded);
     const float midPointXPosition = xPosition+80*ratio < MAX_X_COORDINATE_POSITION ? xPosition+80*ratio : MAX_X_COORDINATE_POSITION;
     const float endPointXPosition = xPosition+60.0f < MAX_X_COORDINATE_POSITION ? xPosition+60.0f : MAX_X_COORDINATE_POSITION;
     const float midPoint2XPosition = xPosition+20*ratio < MAX_X_COORDINATE_POSITION ?  xPosition+20*ratio : MAX_X_COORDINATE_POSITION;
@@ -65,7 +65,7 @@ void FilterComponent::paint (juce::Graphics& g)
     juce::Point<float> midPoint2(midPoint2XPosition, yPosition+30*ratio);
     juce::Point<float> midPoint3(midPointXPosition,  (yPosition+getHeight())/2.0);
     juce::Point<float> resonancePoint(xPosition, yPosition);
-    juce::Point<float> endingOutlinePoint(endPointXPosition, getHeight()+1);
+    juce::Point<float> endingOutlinePoint(endPointXPosition, getHeight()+2);
     
     //Filter Path background
     juce::ColourGradient filterFillGradient(JuceItFilterFillBackground_Colour1,0,FILTER_HEIGHT,JuceItFilterFillBackground_Colour2,0, getHeight(), false);
@@ -129,9 +129,9 @@ void FilterComponent::setMousePosition(const juce::MouseEvent& event)
         {
             xPosition = MAX_X_COORDINATE_POSITION;
         }
-        else if(xPosition<FILTER_COORDINATES_OFFSET)
+        else if(xPosition<MIN_X_COORDINATE_POSITION)
         {
-            xPosition=FILTER_COORDINATES_OFFSET;
+            xPosition=MIN_X_COORDINATE_POSITION;
         }
         
         //Set the yPosition within the possible desired bounds of the component
@@ -139,14 +139,14 @@ void FilterComponent::setMousePosition(const juce::MouseEvent& event)
         {
             yPosition = MAX_Y_COORDINATE_POSITION;
         }
-        else if(yPosition<FILTER_COORDINATES_OFFSET)
+        else if(yPosition<MIN_Y_COORDINATE_POSITION)
         {
-            yPosition=FILTER_COORDINATES_OFFSET;
+            yPosition=MIN_Y_COORDINATE_POSITION;
         }
         
         //Map the coordinates to values within the range of frequency
         float frequencyValueMap = juce::jmap(xPosition,
-                                            FILTER_COORDINATES_OFFSET,
+                                            MIN_X_COORDINATE_POSITION,
                                             MAX_X_COORDINATE_POSITION,
                                             JuceItParameterMinValue[jParameter_Frequency],
                                             JuceItParameterMaxValue[jParameter_Frequency]);
@@ -154,7 +154,7 @@ void FilterComponent::setMousePosition(const juce::MouseEvent& event)
         //Map the coordinates to values within the range of Resonace
         float resonanceValueMap = juce::jmap(yPosition,
                                             MAX_Y_COORDINATE_POSITION,
-                                            FILTER_COORDINATES_OFFSET,
+                                            MIN_Y_COORDINATE_POSITION,
                                             JuceItParameterMinValue[jParameter_Resonance],
                                             JuceItParameterMaxValue[jParameter_Resonance]);
         
